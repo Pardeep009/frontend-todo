@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import axios from '../axios';
 import { isAuthenticated } from "../auth";
 import TaskInput from './TaskInput/TaskInput';
 import Button from './Button/Button';
@@ -6,9 +7,6 @@ import Tasks from './Tasks/Tasks';
 import Modal from './Modal/Modal';
 
 import './ToDoApp.css';
-
-const token = isAuthenticated().token;
-const tasks_On_One_Page = 10;
 
 class ToDoApp extends Component {
 
@@ -25,37 +23,49 @@ class ToDoApp extends Component {
             current_page_no : 0,
             show_Next_Tasks : false,
             show_Prev_Tasks : false,
+            tasks_On_One_Page : 5,
         }
     }
 
     componentDidMount() {
-        fetch(`http://localhost:5000/getTasks`, {
-            method : 'POST',
-            headers : {
+        this.getTasks();
+    }
+
+    getTasks = () => {
+        axios.post('/getTasks',{
+            user_id : this.props.match.params.userid,
+            skip_count : this.state.current_page_no*this.state.tasks_On_One_Page,
+            tasks_On_One_Page : this.state.tasks_On_One_Page,
+        },{
+            headers :  {
                 Accept : "application/json",
                 "Content-Type" : "application/json",
-                Authorization : `Bearer ${token}`
-            },
-            body : JSON.stringify({
-                user_id : this.props.match.params.userid,
-                skip_count : this.state.current_page_no*10,
-            }),
-        })
-        .then((response) => {
-            return response.json();
+                Authorization : `Bearer ${isAuthenticated().token}`
+            }
         })
         .then((response) => {
             let next_tasks = false;
-            if(response.tasks.length > tasks_On_One_Page) {
-                response.tasks.splice(tasks_On_One_Page,1);
+            let userTasks = [...response.data.tasks]
+            if(userTasks.length > this.state.tasks_On_One_Page) {
+                userTasks.splice(this.state.tasks_On_One_Page,1);
                 next_tasks = true;
             }
             this.setState({
                 show_Next_Tasks : next_tasks,
-                tasks : response.tasks,
+                tasks : userTasks,
             })
         })
-        .catch(err => console.log(err));
+        .catch(err => {
+            console.log(err.config);
+        });
+    }
+
+    handleSelectChange = (event) => {
+        this.setState({ 
+            tasks_On_One_Page : Number(event.target.value)
+        },() => {
+            this.getTasks();
+        })
     }
 
     handleClick = () => {
@@ -74,29 +84,25 @@ class ToDoApp extends Component {
             alert('Enter all fields');
             return;
         }
-        fetch(`http://localhost:5000/addTask`, {
-            method : 'POST',
-            headers : {
+
+        axios.post('/addTask',{
+            user_id : this.props.match.params.userid,
+            new_task_title : this.state.task_title,
+            new_task_description : this.state.task_description
+        },{
+            headers :  {
                 Accept : "application/json",
                 "Content-Type" : "application/json",
-                Authorization : `Bearer ${token}`
-            },
-            body : JSON.stringify({
-                user_id : this.props.match.params.userid,
-                new_task_title : this.state.task_title,
-                new_task_description : this.state.task_description
-            }),
-        })
-        .then((response) => {
-            return response.json();
+                Authorization : `Bearer ${isAuthenticated().token}`
+            }
         })
         .then((response) => {
             let next_tasks = false;
             let new_tasks = [...this.state.tasks];
-            if(this.state.tasks.length < 10)
+            if(this.state.tasks.length < this.state.tasks_On_One_Page)
             {
                 let task = {
-                    _id : response.task_id,
+                    _id : response.data.task_id,
                     title : new_task_title,
                     description : new_task_description,
                 }
@@ -116,32 +122,25 @@ class ToDoApp extends Component {
     }
 
     deleteTask = (index,task_id) => {
-        fetch(`http://localhost:5000/deleteTask`, {
-            method : 'POST',
-            headers : {
+        axios.post('/deleteTask',{
+            user_id : this.props.match.params.userid,
+            task_id : task_id
+        },{
+            headers :  {
                 Accept : "application/json",
                 "Content-Type" : "application/json",
-                Authorization : `Bearer ${token}`
+                Authorization : `Bearer ${isAuthenticated().token}`
             },
-            body : JSON.stringify({
-                user_id : this.props.match.params.userid,
-                task_id : task_id
-            }),
-        })
-        .then((response) => {
-            return response.json();
         })
         .then((response) => {
             let updated_tasks = [...this.state.tasks];
             updated_tasks.splice(index,1);
             this.setState({
                 tasks : updated_tasks,
-            },() => {
-
             })
         })
         .catch(err => console.log(err));
-    }
+}
 
     modalCloseHandler = () => {
         this.setState({
@@ -151,21 +150,16 @@ class ToDoApp extends Component {
     }
 
     updateTask = () => {
-        fetch(`http://localhost:5000/updateTask`, {
-            method : 'POST',
-            headers : {
+        axios.post('/updateTask', {
+            task_id : this.state.tasks[this.state.Editing_Task_Index]._id,
+            task_title_new : this.state.task_title,
+            task_description_new : this.state.task_description
+        },{
+            headers :  {
                 Accept : "application/json",
                 "Content-Type" : "application/json",
-                Authorization : `Bearer ${token}`
-            },
-            body : JSON.stringify({
-                task_id : this.state.tasks[this.state.Editing_Task_Index]._id,
-                task_title_new : this.state.task_title,
-                task_description_new : this.state.task_description
-            }),
-        })
-        .then((response) => {
-            return response.json();
+                Authorization : `Bearer ${isAuthenticated().token}`
+            }
         })
         .then((response) => {
             let updated_tasks = [...this.state.tasks];
@@ -199,59 +193,54 @@ class ToDoApp extends Component {
     }
 
     showNextTasks = () => {
-        fetch(`http://localhost:5000/getTasks`, {
-            method : 'POST',
-            headers : {
-                Accept : "application/json",
-                "Content-Type" : "application/json",
-                Authorization : `Bearer ${token}`
-            },
-            body : JSON.stringify({
+            axios.post('/getTasks',{
                 user_id : this.props.match.params.userid,
-                skip_count : (this.state.current_page_no+1)*10,
-            }),
-        })
-        .then((response) => {
-            return response.json();
-        })
-        .then((response) => {
-            let next_tasks = false
-            if(response.tasks.length > tasks_On_One_Page) {
-                response.tasks.splice(tasks_On_One_Page,1);
-                next_tasks = true;
-            } 
-
-            this.setState({
-                show_Prev_Tasks : true,
-                current_page_no : this.state.current_page_no + 1,
-                show_Next_Tasks : next_tasks,
-                tasks : response.tasks
+                skip_count : (this.state.current_page_no+1)*this.state.tasks_On_One_Page,
+                tasks_On_One_Page : this.state.tasks_On_One_Page,
+            },{
+                headers :  {
+                    Accept : "application/json",
+                    "Content-Type" : "application/json",
+                    Authorization : `Bearer ${isAuthenticated().token}`
+                }
             })
-        })
-        .catch(err => console.log(err));
+            .then((response) => {
+                console.log(response);
+                let next_tasks = false
+                let userTasks = [...response.data.tasks];
+                if(userTasks.length > this.state.tasks_On_One_Page) {
+                    userTasks.splice(this.state.tasks_On_One_Page,1);
+                    next_tasks = true;
+                } 
+    
+                this.setState({
+                    show_Prev_Tasks : true,
+                    current_page_no : this.state.current_page_no + 1,
+                    show_Next_Tasks : next_tasks,
+                    tasks : userTasks
+                })
+            })
+            .catch(err => console.log(err));
     }
 
     showPrevTasks = () => {
-        fetch(`http://localhost:5000/getTasks`, {
-            method : 'POST',
-            headers : {
+        axios.post('/getTasks',{
+            user_id : this.props.match.params.userid,
+            skip_count : (this.state.current_page_no-1)*this.state.tasks_On_One_Page,
+            tasks_On_One_Page : this.state.tasks_On_One_Page,
+        },{
+            headers :  {
                 Accept : "application/json",
                 "Content-Type" : "application/json",
-                Authorization : `Bearer ${token}`
-            },
-            body : JSON.stringify({
-                user_id : this.props.match.params.userid,
-                skip_count : (this.state.current_page_no-1)*10,
-            }),
-        })
-        .then((response) => {
-            return response.json();
+                Authorization : `Bearer ${isAuthenticated().token}`
+            }
         })
         .then((response) => {
             let prev_tasks = true;
             let next_tasks = false;
-            if(response.tasks.length > tasks_On_One_Page) {
-                response.tasks.splice(tasks_On_One_Page,1);
+            let userTasks = [...response.data.tasks];
+            if(userTasks.length > this.state.tasks_On_One_Page) {
+                userTasks.splice(this.state.tasks_On_One_Page,1);
                 next_tasks = true;
             } 
             if(this.state.current_page_no-1 == 0)
@@ -261,7 +250,7 @@ class ToDoApp extends Component {
             this.setState({
                 current_page_no : this.state.current_page_no - 1,
                 show_Next_Tasks : next_tasks,
-                tasks : response.tasks,
+                tasks : userTasks,
                 show_Prev_Tasks : prev_tasks,
             })
         })
@@ -278,18 +267,23 @@ class ToDoApp extends Component {
 
         if(this.state.is_Viewing_Task_Description === true) {
             modalContent =  <>
-                                <p> Title :&nbsp;
-                                    {
-                                        this.state.tasks[this.state.viewing_Task_Description_Index].title
-                                    }
-                                </p>
-
-                                <p> Description :&nbsp; 
-                                    {
-                                        this.state.tasks[this.state.viewing_Task_Description_Index].description
-                                    }
-                                
-                                </p>
+                                <div className="row">
+                                    <div className="col-sm-12">
+                                        <p> Title :&nbsp;
+                                            {
+                                                this.state.tasks[this.state.viewing_Task_Description_Index].title
+                                            }
+                                        </p>
+                                    </div>
+                                    <div className="col-sm-12">
+                                        <p> Description :&nbsp; 
+                                            {
+                                                this.state.tasks[this.state.viewing_Task_Description_Index].description
+                                            }
+                                        
+                                        </p>
+                                    </div>
+                                </div>
                             </>
         }
 
@@ -316,6 +310,16 @@ class ToDoApp extends Component {
                         {
                             !this.state.is_Editing_Task ? 
                             <>
+                                <div className="form-group">
+                                    <label htmlFor="sel1">Select Tasks on One Page:</label>
+                                    <select className="form-control" id="sel1" onChange={this.handleSelectChange}>
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="15">15</option>
+                                        <option value="20">20</option>
+                                    </select>
+                                </div>
+
                                 <Tasks 
                                 tasks = {this.state.tasks}
                                 editHandler = {this.editTask}

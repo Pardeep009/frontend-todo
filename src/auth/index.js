@@ -1,27 +1,40 @@
-export const signup = user => {
-  return fetch(`http://localhost:5000/adduser`, {
-    method: "POST",
-    headers: {
+import axios from '../axios';
+
+export const signup = (user,next) => {
+  axios.post('/addUser',{
+    email : user.email,
+    password : user.password,
+    name : user.name
+  },{
+    headers : {
       Accept: "application/json",
       "Content-Type": "application/json"
-    },
-    body: JSON.stringify(user)
+    }
   })
-    .then(res => res.json())
-    .catch(err => console.log(err));
+  .then(res => {
+    next(res.data);
+  })
+  .catch(err => {
+    next(err.response.data);
+  });
 };
 
-export const signin = user => {
-  return fetch(`http://localhost:5000/login`, {
-    method: "POST",
-    headers: {
+export const signin = (user,next) => {
+  axios.post('/login',{
+    email : user.email,
+    password : user.password
+  },{
+    headers : {
       Accept: "application/json",
       "Content-Type": "application/json"
-    },
-    body: JSON.stringify(user)
+    }
   })
-    .then(res => res.json())
-    .catch(err => console.log(err));
+  .then((response) => {
+    next(response.data);
+  })
+  .catch(error => {
+    next(error.response.data);
+  });
 };
 
 export const authenticate = (jwt, next) => {
@@ -36,9 +49,9 @@ export const signout = next => {
     localStorage.removeItem("jwt");
   }
   next();
-  return fetch(`${process.env.REACT_APP_API_URL}/logout`)
-    .then(res => res.json())
-    .catch(err => console.log(err));
+  axios.get('/logout')
+  .then((response) => response.data)
+  .catch(err => console.log(err));
 };
 
 export const isAuthenticated = () => {
