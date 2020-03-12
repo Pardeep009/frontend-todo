@@ -5,6 +5,7 @@ import TaskInput from './TaskInput/TaskInput';
 import Button from './Button/Button';
 import Tasks from './Tasks/Tasks';
 import Modal from './Modal/Modal';
+import Spinner from '../core/Spinner';
 
 import './ToDoApp.css';
 
@@ -16,6 +17,7 @@ class ToDoApp extends Component {
             task_title : '',
             task_description : '',
             tasks : [],
+            isLoading : true,
             is_Editing_Task : false,
             Editing_Task_Index : -1,
             is_Viewing_Task_Description : false,
@@ -53,6 +55,7 @@ class ToDoApp extends Component {
             this.setState({
                 show_Next_Tasks : next_tasks,
                 tasks : userTasks,
+                isLoading : false,
             })
         })
         .catch(err => {
@@ -62,7 +65,8 @@ class ToDoApp extends Component {
 
     handleSelectChange = (event) => {
         this.setState({ 
-            tasks_On_One_Page : Number(event.target.value)
+            tasks_On_One_Page : Number(event.target.value),
+            isLoading : true,
         },() => {
             this.getTasks();
         })
@@ -122,6 +126,9 @@ class ToDoApp extends Component {
     }
 
     deleteTask = (index,task_id) => {
+        this.setState({
+            isLoading : true,
+        },() => {
         axios.post('/deleteTask',{
             user_id : this.props.match.params.userid,
             task_id : task_id
@@ -137,9 +144,11 @@ class ToDoApp extends Component {
             updated_tasks.splice(index,1);
             this.setState({
                 tasks : updated_tasks,
+                isLoading : false,
             })
         })
         .catch(err => console.log(err));
+    })
 }
 
     modalCloseHandler = () => {
@@ -150,30 +159,35 @@ class ToDoApp extends Component {
     }
 
     updateTask = () => {
-        axios.post('/updateTask', {
-            task_id : this.state.tasks[this.state.Editing_Task_Index]._id,
-            task_title_new : this.state.task_title,
-            task_description_new : this.state.task_description
-        },{
-            headers :  {
-                Accept : "application/json",
-                "Content-Type" : "application/json",
-                Authorization : `Bearer ${isAuthenticated().token}`
-            }
-        })
-        .then((response) => {
-            let updated_tasks = [...this.state.tasks];
-            updated_tasks[this.state.Editing_Task_Index].title = this.state.task_title;
-            updated_tasks[this.state.Editing_Task_Index].description = this.state.task_description;
-            this.setState({
-                tasks : updated_tasks,
-                task_title : '',
-                task_description : '',
-                is_Editing_Task : false,
-                Editing_Task_Index : -1,
+        this.setState({
+            isLoading : true,
+        },() => {
+            axios.post('/updateTask', {
+                task_id : this.state.tasks[this.state.Editing_Task_Index]._id,
+                task_title_new : this.state.task_title,
+                task_description_new : this.state.task_description
+            },{
+                headers :  {
+                    Accept : "application/json",
+                    "Content-Type" : "application/json",
+                    Authorization : `Bearer ${isAuthenticated().token}`
+                }
             })
+            .then((response) => {
+                let updated_tasks = [...this.state.tasks];
+                updated_tasks[this.state.Editing_Task_Index].title = this.state.task_title;
+                updated_tasks[this.state.Editing_Task_Index].description = this.state.task_description;
+                this.setState({
+                    tasks : updated_tasks,
+                    task_title : '',
+                    task_description : '',
+                    is_Editing_Task : false,
+                    Editing_Task_Index : -1,
+                    isLoading : false,
+                })
+            })
+            .catch(err => console.log(err));
         })
-        .catch(err => console.log(err));
     }
 
     editTask = (index) => {
@@ -193,9 +207,48 @@ class ToDoApp extends Component {
     }
 
     showNextTasks = () => {
+            this.setState({
+                isLoading : true,
+            },() => {
+                axios.post('/getTasks',{
+                    user_id : this.props.match.params.userid,
+                    skip_count : (this.state.current_page_no+1)*this.state.tasks_On_One_Page,
+                    tasks_On_One_Page : this.state.tasks_On_One_Page,
+                },{
+                    headers :  {
+                        Accept : "application/json",
+                        "Content-Type" : "application/json",
+                        Authorization : `Bearer ${isAuthenticated().token}`
+                    }
+                })
+                .then((response) => {
+                    console.log(response);
+                    let next_tasks = false
+                    let userTasks = [...response.data.tasks];
+                    if(userTasks.length > this.state.tasks_On_One_Page) {
+                        userTasks.splice(this.state.tasks_On_One_Page,1);
+                        next_tasks = true;
+                    } 
+        
+                    this.setState({
+                        show_Prev_Tasks : true,
+                        current_page_no : this.state.current_page_no + 1,
+                        show_Next_Tasks : next_tasks,
+                        tasks : userTasks,
+                        isLoading : false,
+                    })
+                })
+                .catch(err => console.log(err));
+            })
+    }
+
+    showPrevTasks = () => {
+        this.setState({
+            isLoading : true,
+        },() => {
             axios.post('/getTasks',{
                 user_id : this.props.match.params.userid,
-                skip_count : (this.state.current_page_no+1)*this.state.tasks_On_One_Page,
+                skip_count : (this.state.current_page_no-1)*this.state.tasks_On_One_Page,
                 tasks_On_One_Page : this.state.tasks_On_One_Page,
             },{
                 headers :  {
@@ -205,56 +258,27 @@ class ToDoApp extends Component {
                 }
             })
             .then((response) => {
-                console.log(response);
-                let next_tasks = false
+                let prev_tasks = true;
+                let next_tasks = false;
                 let userTasks = [...response.data.tasks];
                 if(userTasks.length > this.state.tasks_On_One_Page) {
                     userTasks.splice(this.state.tasks_On_One_Page,1);
                     next_tasks = true;
                 } 
-    
+                if(this.state.current_page_no-1 === 0)
+                {   
+                    prev_tasks = false;
+                }
                 this.setState({
-                    show_Prev_Tasks : true,
-                    current_page_no : this.state.current_page_no + 1,
+                    current_page_no : this.state.current_page_no - 1,
                     show_Next_Tasks : next_tasks,
-                    tasks : userTasks
+                    tasks : userTasks,
+                    show_Prev_Tasks : prev_tasks,
+                    isLoading : false,
                 })
             })
             .catch(err => console.log(err));
-    }
-
-    showPrevTasks = () => {
-        axios.post('/getTasks',{
-            user_id : this.props.match.params.userid,
-            skip_count : (this.state.current_page_no-1)*this.state.tasks_On_One_Page,
-            tasks_On_One_Page : this.state.tasks_On_One_Page,
-        },{
-            headers :  {
-                Accept : "application/json",
-                "Content-Type" : "application/json",
-                Authorization : `Bearer ${isAuthenticated().token}`
-            }
         })
-        .then((response) => {
-            let prev_tasks = true;
-            let next_tasks = false;
-            let userTasks = [...response.data.tasks];
-            if(userTasks.length > this.state.tasks_On_One_Page) {
-                userTasks.splice(this.state.tasks_On_One_Page,1);
-                next_tasks = true;
-            } 
-            if(this.state.current_page_no-1 == 0)
-            {   
-                prev_tasks = false;
-            }
-            this.setState({
-                current_page_no : this.state.current_page_no - 1,
-                show_Next_Tasks : next_tasks,
-                tasks : userTasks,
-                show_Prev_Tasks : prev_tasks,
-            })
-        })
-        .catch(err => console.log(err));
     }
 
     render() {
@@ -319,12 +343,17 @@ class ToDoApp extends Component {
                                         <option value="20">20</option>
                                     </select>
                                 </div>
-
-                                <Tasks 
-                                tasks = {this.state.tasks}
-                                editHandler = {this.editTask}
-                                deleteHandler = {this.deleteTask}
-                                viewDescriptionHandler = {this.showTaskDescription} />
+                                {
+                                    !this.state.isLoading ? 
+                                    <>
+                                        <Tasks 
+                                        tasks = {this.state.tasks}
+                                        editHandler = {this.editTask}
+                                        deleteHandler = {this.deleteTask}
+                                        viewDescriptionHandler = {this.showTaskDescription} />
+                                    </>
+                                    : <Spinner />
+                                }
                                 <Button 
                                     text={"Prev"}
                                     class={"btn-primary"} 
@@ -334,7 +363,14 @@ class ToDoApp extends Component {
                                     class={"btn-primary"} 
                                     disabled={this.state.show_Next_Tasks} clickHandler={this.showNextTasks} />
                             </>
-                            : null 
+                            :
+                            <>
+                                {
+                                    this.state.isLoading ?
+                                    <Spinner />
+                                    : null
+                                }
+                            </> 
                         }
 
                     </div>
