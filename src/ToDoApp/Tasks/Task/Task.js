@@ -9,11 +9,12 @@ const Task = (props) => {
         <li>
             <div className="row task-li">
                 <div className="col-sm-4 task-title" onClick={props.viewDescriptionHandler} >
-                    <h3>{props.title}</h3>
+                    <h3 className="">{props.title}</h3>
                 </div>
-                <div className="col-sm-4">
-                    <Button text={"Edit"} class={"btn-info"} clickHandler={props.editHandler} disabled={true} />
-                    <Button text={"Delete"} class={"btn-danger"} clickHandler={props.deleteHandler} disabled={true} />
+                <div className="col-sm-4 task-actions">
+                    {/* helllo */}
+                    <Button text={"Edit"} clickHandler={props.editHandler} disabled={true} />
+                    <Button text={"Delete"}clickHandler={props.deleteHandler} disabled={true} />
                 </div>
                 <div className="col-sm-4">
 

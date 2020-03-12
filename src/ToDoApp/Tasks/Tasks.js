@@ -20,12 +20,15 @@ const Tasks = (props) => {
         <ul>
              <li key={"headline"}>
                     <div className="row">
-                        <div className="col-sm-4">
-                            <h1>Title</h1>
+                        <div className="col-sm-4 task-title-headline">
+                            <h1 className="">Title</h1>
                             <h6>(Click on Titles to view Description)</h6>
                         </div>
-                        <div className="col-sm-8">
-                        <h1>Actions</h1>
+                        <div className="col-sm-4 task-action-headline">
+                            <h1 className="">Actions</h1>
+                        </div>
+                        <div className="col-sm-4">
+
                         </div>
 
                     </div>

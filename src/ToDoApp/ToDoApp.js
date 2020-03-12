@@ -60,7 +60,7 @@ class ToDoApp extends Component {
         })
         .catch(err => {
             console.log(err.config);
-        });
+        });  
     }
 
     handleSelectChange = (event) => {
@@ -329,12 +329,11 @@ class ToDoApp extends Component {
                         <Button
                             text = {btnText}
                             clickHandler = {this.handleClick}
-                            disabled= {true}
-                            class = {"btn-success"} />
+                            disabled= {true} />
                         {
                             !this.state.is_Editing_Task ? 
                             <>
-                                <div className="form-group">
+                                <div className="form-group" style={{ marginTop : "20px" }}>
                                     <label htmlFor="sel1">Select Tasks on One Page:</label>
                                     <select className="form-control" id="sel1" onChange={this.handleSelectChange}>
                                         <option value="5">5</option>
@@ -354,14 +353,16 @@ class ToDoApp extends Component {
                                     </>
                                     : <Spinner />
                                 }
-                                <Button 
-                                    text={"Prev"}
-                                    class={"btn-primary"} 
-                                    disabled={this.state.show_Prev_Tasks} clickHandler={this.showPrevTasks}/>
-                                <Button 
-                                    text={"Next"}
-                                    class={"btn-primary"} 
-                                    disabled={this.state.show_Next_Tasks} clickHandler={this.showNextTasks} />
+                                <center style={{ marginBottom : "20px" }}>
+                                    <Button 
+                                        text={"Prev"}
+                                        class={"btn-primary"} 
+                                        disabled={this.state.show_Prev_Tasks} clickHandler={this.showPrevTasks}/>
+                                    <Button 
+                                        text={"Next"}
+                                        class={"btn-primary"} 
+                                        disabled={this.state.show_Next_Tasks} clickHandler={this.showNextTasks} />
+                                </center>
                             </>
                             :
                             <>
